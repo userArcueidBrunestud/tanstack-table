@@ -26,14 +26,16 @@ input::placeholder{color:var(--dim)}
 #scroll::-webkit-scrollbar-thumb{background:var(--b2)}
 #inner{position:relative}
 .row{position:absolute;left:0;right:0;display:flex;align-items:center;
-  border-bottom:1px solid var(--b1);height:36px}
+  border-bottom:1px solid var(--b1);height:36px;user-select:none}
 .row.odd{background:#fff}
 .row.even{background:#fff}
 .row:hover{background:#f3f4f6}
 .cell{flex-shrink:0;padding:0 12px;height:100%;display:flex;align-items:center;
-  font-size:13px;border-right:1px solid var(--b1);overflow:hidden;white-space:nowrap}
+  font-size:13px;border-right:1px solid var(--b1);overflow:hidden;white-space:nowrap;user-select:none}
 .cell:last-child{border-right:none}
 /* cell styles */
+#sel-overlay{position:absolute;pointer-events:none;z-index:1;
+  border:2px solid var(--bl);background:rgba(74,144,217,.07);box-sizing:border-box;display:none}
 .dim{color:var(--dim);font-size:11px}
 .pn{color:var(--tx);cursor:pointer;font-size:14px}.pn-dim{opacity:.5}
 .iv-badge{padding:2px 10px;border-radius:3px;font-size:12px;white-space:nowrap}
@@ -42,7 +44,7 @@ input.sel-all,input.sel-row{accent-color:var(--bl);cursor:pointer;width:16px;hei
 input.sel-all:checked,input.sel-row:checked{accent-color:var(--bl)}
 button.ed{background:transparent;border:1px solid var(--b2);color:var(--dim);font:inherit;font-size:10px;padding:3px 9px;cursor:pointer}
 button.ed:hover{background:var(--g);color:#fff;border-color:var(--g)}
-input.ci{background:#fff;border:1px solid var(--g);color:#1a1a1a;font:inherit;font-size:13px;padding:2px 6px;width:100%;height:26px;outline:none}
+input.ci{background:#fff;border:1px solid var(--g);color:#1a1a1a;font:inherit;font-size:13px;padding:2px 6px;width:100%;height:26px;outline:none;user-select:text}
 .row-editing{background:#fff !important}
 .cell-edit{background:#fff;color:#1a1a1a}
 .cell-edit input.ci{width:100%;height:100%;border:2px solid var(--bl);padding:0 10px;box-sizing:border-box;font-size:13px}

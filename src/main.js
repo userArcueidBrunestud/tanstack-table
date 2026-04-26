@@ -233,6 +233,9 @@ let tableParams = {
 };
 let editingCell = null; // { rowIdx, colKey } | null
 const editedRows = new Map(); // rowId -> changedFields
+let selRange = null; // { r1, c1, r2, c2 } — 框选范围（col 是 COLS 索引）
+let selDragging = false;
+let selDragMoved = false;
 const selectedRows = new Set(); // row id
 
 /* ============================ 过滤 & 排序 ============================ */
@@ -317,6 +320,11 @@ const scrollEl = document.getElementById('scroll');
 const innerEl  = document.getElementById('inner');
 const ROW_H = 36;
 
+/* 框选覆盖层 */
+const selOverlay = document.createElement('div');
+selOverlay.id = 'sel-overlay';
+innerEl.appendChild(selOverlay);
+
 const virt = new Virtualizer({
   count: rows.length,
   estimateSize: () => ROW_H,
@@ -358,6 +366,10 @@ function renderRows() {
     return `<div class="${rowCls}" style="top:${start}px;height:${size}px">${cells}</div>`;
   }).join('');
 
+  // innerHTML 会清掉 overlay，重新挂回并更新位置
+  innerEl.appendChild(selOverlay);
+  updateSelOverlay();
+
   if (editingCell) {
     const inp = innerEl.querySelector('.ci');
     if (inp) {
@@ -371,16 +383,93 @@ function renderRows() {
   }
 }
 
+function colLeft(colIdx) {
+  let x = 0;
+  for (let i = 0; i < colIdx; i++) x += COLS[i].w;
+  return x;
+}
+
+function updateSelOverlay() {
+  if (!selRange) {
+    selOverlay.style.display = 'none';
+    return;
+  }
+  const r1 = Math.min(selRange.r1, selRange.r2);
+  const r2 = Math.max(selRange.r1, selRange.r2);
+  const c1 = Math.min(selRange.c1, selRange.c2);
+  const c2 = Math.max(selRange.c1, selRange.c2);
+
+  selOverlay.style.display = 'block';
+  selOverlay.style.top = (r1 * ROW_H) + 'px';
+  selOverlay.style.left = colLeft(c1) + 'px';
+  selOverlay.style.width = (colLeft(c2 + 1) - colLeft(c1)) + 'px';
+  selOverlay.style.height = ((r2 - r1 + 1) * ROW_H) + 'px';
+}
+
 function refresh() {
   applyFilter();
   virt.options.count = rows.length;
   virt._willUpdate();
   renderHead();
   renderRows();
+  updateSelOverlay();
   const totalW = COLS.reduce((s, c) => s + c.w, 0);
   innerEl.style.minWidth = totalW + 'px';
   document.getElementById('thead').style.width = totalW + 'px';
 }
+
+/* ============================ 框选事件 ============================ */
+
+innerEl.addEventListener('mousedown', e => {
+  const cell = e.target.closest('.cell');
+  if (!cell) {
+    selRange = null;
+    updateSelOverlay();
+    return;
+  }
+  const colKey = cell.dataset.col;
+  const rowIdx = parseInt(cell.dataset.row);
+  if (!colKey || isNaN(rowIdx)) return;
+  const colIdx = COLS.findIndex(c => c.k === colKey);
+  if (colIdx < 0) return;
+  selRange = { r1: rowIdx, c1: colIdx, r2: rowIdx, c2: colIdx };
+  selDragging = true;
+  selDragMoved = false;
+  updateSelOverlay();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!selDragging) return;
+  e.preventDefault();
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = el?.closest?.('.cell');
+  if (!cell) return;
+  const colKey = cell.dataset.col;
+  const rowIdx = parseInt(cell.dataset.row);
+  if (!colKey || isNaN(rowIdx)) return;
+  const colIdx = COLS.findIndex(c => c.k === colKey);
+  if (colIdx < 0) return;
+  if (selRange.r2 !== rowIdx || selRange.c2 !== colIdx) {
+    selRange.r2 = rowIdx;
+    selRange.c2 = colIdx;
+    selDragMoved = true;
+    updateSelOverlay();
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (!selDragging) return;
+  selDragging = false;
+  // 单击（没拖动）选中单格，不在这里清除 selRange
+});
+
+// 点击表格外 → 清除框选
+document.addEventListener('mousedown', e => {
+  if (!e.target.closest('#scroll') && !e.target.closest('#inner')) {
+    selRange = null;
+    updateSelOverlay();
+  }
+});
 
 /* ============================ 事件 ============================ */
 
@@ -504,13 +593,16 @@ innerEl.addEventListener('click', e => {
     return;
   }
 
-  // 点击单元格 → 进入编辑 + 勾选该行
+  // 点击单元格 → 选择 + 进入编辑 + 勾选该行
   const cell = e.target.closest('.cell');
   if (!cell) return;
   const col = cell.dataset.col;
   const row = parseInt(cell.dataset.row);
   if (!col || isNaN(row)) return;
   if (col === '_act' || col === '_sel' || col === 'Note') return;
+
+  // 如果刚才拖拽了，不进入编辑
+  if (selDragMoved) return;
 
   // 勾选该行
   const r = rows[row];
