@@ -347,7 +347,8 @@ function renderRows() {
     const inEditRow = editingCell && editingCell.rowIdx === index;
     const cells = COLS.map(c => {
       const editable = c.k !== '_act' && c.k !== 'id' && c.k !== '_idx' && c.k !== '_sel' && c.k !== 'Note';
-      const cls = inEditRow && editable ? ' cell-edit' : '';
+      const editing = inEditRow && editingCell.colKey === c.k;
+      const cls = editing ? ' cell-editing' : inEditRow && editable ? ' cell-edit' : '';
       return `<div class="cell${cls}" style="width:${c.w}px" data-col="${c.k}" data-row="${index}">${cell(c.k, r, index)}</div>`;
     }).join('');
     const rowCls = ['row', index % 2 ? 'odd' : 'even', inEditRow ? 'row-editing' : ''].filter(Boolean).join(' ');
