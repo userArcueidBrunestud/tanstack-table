@@ -409,6 +409,7 @@ document.addEventListener('mousemove', e => {
   const diff = e.clientX - resizing.startX;
   COLS[resizing.ci].w = Math.max(40, resizing.startW + diff);
   renderHead();
+  renderRows();
   const totalW = COLS.reduce((s, c) => s + c.w, 0);
   innerEl.style.minWidth = totalW + 'px';
 });
