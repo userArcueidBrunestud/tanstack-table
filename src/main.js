@@ -294,12 +294,12 @@ function cell(k, r, rowIdx) {
     const m = colorList.find(item => item.Name === v);
     const bg = m ? m.Color : 'transparent';
     const c = m ? '#fff' : 'var(--dim)';
-    return `<span class="cell-c"><span class="iv-badge" style="background:${bg};color:${c}">${v || '-'}</span></span>`;
+    return `<span class="cell-c"><span class="iv-badge" style="background:${bg};color:${c}">${v}</span></span>`;
   }
   if (k === 'NewOld') return `<span class="cell-c">${r.NewOld}</span>`;
   if (k === 'Note') return `<span class="cell-c"><button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button></span>`;
   if (k === 'HuiFu') {
-    const c = r.HuiFu === '已回复' ? '#07c160' : r.HuiFu === '待确认' ? '#f0c060' : 'var(--dim)';
+    const c = r.HuiFu === '已回复' ? '#4a90d9' : r.HuiFu === '待确认' ? '#f0c060' : 'var(--dim)';
     return `<span class="cell-c" style="color:${c}">${r.HuiFu}</span>`;
   }
   return `<span>${escapeHtml(String(v))}</span>`;
