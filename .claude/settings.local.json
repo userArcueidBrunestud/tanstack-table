@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(awk 'NR>=121 && NR<=126' src/main.js)"
+      "Bash(awk 'NR>=121 && NR<=126' src/main.js)",
+      "Bash(git rm *)",
+      "Bash(git add *)"
     ]
   }
 }
