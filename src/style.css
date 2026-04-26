@@ -37,7 +37,7 @@ input::placeholder{color:var(--dim)}
 .tag-admin{color:var(--r);border-color:var(--r)}
 .tag-editor{color:var(--bl);border-color:var(--bl)}
 .tag-viewer{color:var(--dim);border-color:var(--b2)}
-.tag-currency{color:var(--bl);border-color:var(--bl);font-size:10px;padding:2px 6px}
+.tag-currency{color:var(--g);border-color:var(--g);font-size:10px;padding:2px 6px}
 .tag-new{color:var(--g);border-color:var(--g)}
 .tag-refurb{color:#f0c060;border-color:#f0c060}
 .tag-old{color:var(--r);border-color:var(--r)}
@@ -49,22 +49,31 @@ input::placeholder{color:var(--dim)}
 .dot.replied{color:var(--g)}.dot.replied::before{background:var(--g);box-shadow:0 0 4px var(--g)}
 .dot.pending{color:#f0c060}.dot.pending::before{background:#f0c060;box-shadow:0 0 4px #f0c060}
 .dot.noreply{color:var(--dim)}.dot.noreply::before{background:var(--dim)}
-.pn{color:var(--bl);cursor:pointer}.pn:hover{text-decoration:underline}
+.pn{color:var(--tx);cursor:pointer}.pn:hover{color:var(--g)}
 .num{font-variant-numeric:tabular-nums;color:#e0e4f0}
 .price{font-variant-numeric:tabular-nums;color:var(--g);font-weight:600}
 .bw{display:flex;align-items:center;gap:7px;width:100%}
 .bt{flex:1;height:3px;background:var(--b2);position:relative}
 .bf{position:absolute;left:0;top:0;height:100%}
 .bn{font-size:11px;min-width:24px;text-align:right}
-input.sel-all,input.sel-row{accent-color:var(--g);cursor:pointer;width:15px;height:15px}
-button.ed{background:transparent;border:1px solid var(--b2);color:var(--bl);
+input.sel-all,input.sel-row{accent-color:var(--g);cursor:pointer;width:16px;height:16px}
+input.sel-all:checked,input.sel-row:checked{accent-color:var(--g);filter:drop-shadow(0 0 3px rgba(74,240,176,.4))}
+button.ed{background:transparent;border:1px solid var(--b2);color:var(--dim);
   font:inherit;font-size:10px;padding:3px 9px;cursor:pointer}
-button.ed:hover{background:var(--bl);color:var(--bg);border-color:var(--bl)}
-/* edit mode */
-.row-edited{box-shadow:inset 4px 0 0 var(--bl)}
-.cell .edited{color:var(--bl)}
-input.ci{background:var(--bg);border:1px solid var(--g);color:var(--tx);
+button.ed:hover{background:var(--g);color:var(--bg);border-color:var(--g)}
+input.ci{background:#fff;border:1px solid var(--g);color:#1a1a1a;
   font:inherit;font-size:11px;padding:2px 6px;width:100%;height:26px;outline:none}
+/* edit mode */
+.row-editing{background:#1e2a3a !important}
+.cell-edit{background:#fff;color:#1a1a1a}
+.cell-edit .pn{color:#1a1a1a}
+.cell-edit .num{color:#1a1a1a}
+.cell-edit .price{color:var(--g)}
+.cell-edit .tag-currency{color:var(--g);border-color:var(--g)}
+.cell-edit .dot.replied{color:var(--g)}
+.cell-edit .dot.pending{color:#f0c060}
+.cell-edit .dot.noreply{color:var(--dim)}
+.cell-edit input.ci{background:#fff;color:#1a1a1a}
 /* toast */
 #toast{position:fixed;bottom:24px;right:24px;background:var(--sur);
   border:1px solid var(--g);color:var(--g);font-size:12px;padding:9px 16px;

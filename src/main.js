@@ -282,21 +282,20 @@ function cell(k, r, rowIdx) {
     return `<input class="ci" value="${escapeHtml(String(v))}" data-col="${k}" data-row="${rowIdx}" />`;
   }
 
-  const edited = editedRows.has(r.id) && k !== 'id' && k !== '_act' ? ' edited' : '';
-  if (k === 'PartNo') return `<span class="pn${edited}">${r.PartNo}</span>`;
-  if (k === 'Qty') return `<span class="num${edited}">${Number(r.Qty).toLocaleString()}</span>`;
-  if (k === 'TargetPrice') return `<span class="price${edited}">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
-  if (k === 'CurrencyID') return `<span class="tag tag-currency${edited}">${r.CurrencyID}</span>`;
+  if (k === 'PartNo') return `<span class="pn">${r.PartNo}</span>`;
+  if (k === 'Qty') return `<span class="num">${Number(r.Qty).toLocaleString()}</span>`;
+  if (k === 'TargetPrice') return `<span class="price">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
+  if (k === 'CurrencyID') return `<span class="tag tag-currency">${r.CurrencyID}</span>`;
   if (k === 'NewOld') {
     const cls = r.NewOld === '全新' ? 'new' : r.NewOld === '翻新' ? 'refurb' : 'old';
-    return `<span class="tag tag-${cls}${edited}">${r.NewOld}</span>`;
+    return `<span class="tag tag-${cls}">${r.NewOld}</span>`;
   }
   if (k === 'Note') return `<button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button>`;
   if (k === 'HuiFu') {
     const cls = r.HuiFu === '已回复' ? 'replied' : r.HuiFu === '待确认' ? 'pending' : 'noreply';
-    return `<span class="dot ${cls}${edited}">${r.HuiFu}</span>`;
+    return `<span class="dot ${cls}">${r.HuiFu}</span>`;
   }
-  return `<span class="${edited ? 'edited' : ''}">${escapeHtml(String(v))}</span>`;
+  return `<span>${escapeHtml(String(v))}</span>`;
 }
 
 function escapeHtml(s) {
@@ -338,9 +337,14 @@ function renderRows() {
   innerEl.innerHTML = items.map(({ index, start, size }) => {
     const r = rows[index];
     if (!r) return '';
-    const cells = COLS.map(c => `<div class="cell" style="width:${c.w}px" data-col="${c.k}" data-row="${index}">${cell(c.k, r, index)}</div>`).join('');
-    const editedCls = editedRows.has(r.id) ? ' row-edited' : '';
-    return `<div class="row ${index % 2 ? 'odd' : 'even'}${editedCls}" style="top:${start}px;height:${size}px">${cells}</div>`;
+    const inEditRow = editingCell && editingCell.rowIdx === index;
+    const cells = COLS.map(c => {
+      const editable = c.k !== '_act' && c.k !== 'id' && c.k !== '_idx' && c.k !== '_sel' && c.k !== 'Note';
+      const cls = inEditRow && editable ? ' cell-edit' : '';
+      return `<div class="cell${cls}" style="width:${c.w}px" data-col="${c.k}" data-row="${index}">${cell(c.k, r, index)}</div>`;
+    }).join('');
+    const rowCls = ['row', index % 2 ? 'odd' : 'even', inEditRow ? 'row-editing' : ''].filter(Boolean).join(' ');
+    return `<div class="${rowCls}" style="top:${start}px;height:${size}px">${cells}</div>`;
   }).join('');
 
   // 恢复编辑状态
