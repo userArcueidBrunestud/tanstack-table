@@ -1,7 +1,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0f14;--sur:#161920;--b1:#252830;--b2:#2e3340;
-  --tx:#c8cdd8;--dim:#525a6e;--g:#4af0b0;--r:#f06090;--bl:#60a8f0;
+  --bg:#fff;--sur:#fff;--b1:#e8eaed;--b2:#d5d8dd;
+  --tx:#1a1d26;--dim:#8b8f9a;--g:#10b981;--r:#e85070;--bl:#4a90d9;
 }
 body{background:var(--bg);color:var(--tx);font:13px/1.5 monospace;padding:28px}
 input{background:var(--sur);border:1px solid var(--b2);color:var(--tx);
@@ -10,24 +10,24 @@ input:focus{border-color:var(--g)}
 input::placeholder{color:var(--dim)}
 /* table */
 .wrap{border:1px solid var(--b1)}
-.thead{display:flex;background:var(--sur);border-bottom:1px solid var(--b2);
+.thead{display:flex;background:#e8eaed;border-bottom:1px solid var(--b2);
   position:absolute;top:0;left:0;min-width:100%;z-index:1}
 .th{padding:0 12px;height:40px;display:flex;align-items:center;flex-shrink:0;
-  font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  color:var(--dim);cursor:pointer;user-select:none;border-right:1px solid var(--b1)}
+  font-size:12px;font-weight:600;
+  color:var(--tx);cursor:pointer;user-select:none;border-right:1px solid var(--b2)}
 .th:last-child{border-right:none}
 .th:hover{color:var(--tx)}
 .th.asc,.th.desc{color:var(--g)}
 #scroll{height:480px;overflow:auto;position:relative;padding-top:40px;
-  scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
+  scrollbar-width:thin;scrollbar-color:var(--b2) var(--bg)}
 #scroll::-webkit-scrollbar{width:5px;height:5px}
 #scroll::-webkit-scrollbar-thumb{background:var(--b2)}
 #inner{position:relative}
 .row{position:absolute;left:0;right:0;display:flex;align-items:center;
   border-bottom:1px solid var(--b1);height:36px}
-.row.odd{background:#13161e}
-.row.even{background:var(--sur)}
-.row:hover{background:#1d2130}
+.row.odd{background:#fff}
+.row.even{background:#fff}
+.row:hover{background:#f3f4f6}
 .cell{flex-shrink:0;padding:0 12px;height:100%;display:flex;align-items:center;
   font-size:12px;border-right:1px solid var(--b1);overflow:hidden;white-space:nowrap}
 .cell:last-child{border-right:none}
@@ -50,21 +50,22 @@ input::placeholder{color:var(--dim)}
 .dot.pending{color:#f0c060}.dot.pending::before{background:#f0c060;box-shadow:0 0 4px #f0c060}
 .dot.noreply{color:var(--dim)}.dot.noreply::before{background:var(--dim)}
 .pn{color:var(--tx);cursor:pointer}.pn:hover{color:var(--g)}
-.num{font-variant-numeric:tabular-nums;color:#e0e4f0}
+.num{font-variant-numeric:tabular-nums;color:var(--tx)}
 .price{font-variant-numeric:tabular-nums;color:var(--g);font-weight:600}
 .bw{display:flex;align-items:center;gap:7px;width:100%}
 .bt{flex:1;height:3px;background:var(--b2);position:relative}
 .bf{position:absolute;left:0;top:0;height:100%}
 .bn{font-size:11px;min-width:24px;text-align:right}
-input.sel-all,input.sel-row{accent-color:var(--g);cursor:pointer;width:16px;height:16px}
-input.sel-all:checked,input.sel-row:checked{accent-color:var(--g);filter:drop-shadow(0 0 3px rgba(74,240,176,.4))}
+input.sel-all,input.sel-row{accent-color:var(--bl);cursor:pointer;width:16px;height:16px;color-scheme:light}
+.th input.sel-all{margin:0}
+input.sel-all:checked,input.sel-row:checked{accent-color:var(--bl)}
 button.ed{background:transparent;border:1px solid var(--b2);color:var(--dim);
   font:inherit;font-size:10px;padding:3px 9px;cursor:pointer}
-button.ed:hover{background:var(--g);color:var(--bg);border-color:var(--g)}
+button.ed:hover{background:var(--g);color:#fff;border-color:var(--g)}
 input.ci{background:#fff;border:1px solid var(--g);color:#1a1a1a;
   font:inherit;font-size:11px;padding:2px 6px;width:100%;height:26px;outline:none}
 /* edit mode */
-.row-editing{background:#1e2a3a !important}
+.row-editing{background:#fff !important}
 .cell-edit{background:#fff;color:#1a1a1a}
 .cell-edit .pn{color:#1a1a1a}
 .cell-edit .num{color:#1a1a1a}
@@ -91,8 +92,8 @@ input.ci{background:#fff;border:1px solid var(--g);color:#1a1a1a;
 .np-file{font-size:10px;color:var(--bl);display:block;margin-top:2px}
 .np-foot{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--b1)}
 .np-input{flex:1;width:auto;padding:5px 8px;font-size:11px}
-.np-save{background:var(--g);border:none;color:var(--bg);
+.np-save{background:var(--g);border:none;color:#fff;
   font:inherit;font-size:11px;padding:4px 12px;cursor:pointer}
 button.note-btn{background:transparent;border:1px solid var(--b2);color:var(--dim);
   font:inherit;font-size:10px;padding:2px 10px;cursor:pointer;border-radius:10px;height:20px;line-height:1}
-button.note-btn.has-note{background:rgba(74,240,176,.1);color:var(--g);border-color:rgba(74,240,176,.2)}
+button.note-btn.has-note{background:rgba(16,185,129,.1);color:var(--g);border-color:rgba(16,185,129,.2)}
