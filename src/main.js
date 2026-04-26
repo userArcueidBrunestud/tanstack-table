@@ -243,6 +243,8 @@ let tableParams = {
   sortField: null,
   sortOrder: null,
 };
+let editingCell = null; // { rowIdx, colKey } | null
+const editedRows = new Map(); // rowId -> changedFields
 
 /* ============================ 过滤 & 排序 ============================ */
 
@@ -271,22 +273,36 @@ function renderHead() {
   }).join('');
 }
 
-function cell(k, r) {
+function cell(k, r, rowIdx) {
+  const v = r[k] ?? '';
   if (k === 'id') return `<span class="dim">#${r.id}</span>`;
-  if (k === 'PartNo') return `<span class="pn">${r.PartNo}</span>`;
-  if (k === 'Qty') return `<span class="num">${Number(r.Qty).toLocaleString()}</span>`;
-  if (k === 'TargetPrice') return `<span class="price">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
-  if (k === 'CurrencyID') return `<span class="tag tag-currency">${r.CurrencyID}</span>`;
+  if (k === '_act') return `<button class="ed" data-id="${r.id}">编辑</button>`;
+
+  // edit mode
+  if (editingCell && editingCell.rowIdx === rowIdx && editingCell.colKey === k) {
+    return `<input class="ci" value="${escapeHtml(String(v))}" data-col="${k}" data-row="${rowIdx}" />`;
+  }
+
+  const edited = editedRows.has(r.id) && k !== 'id' && k !== '_act' ? ' edited' : '';
+  if (k === 'PartNo') return `<span class="pn${edited}">${r.PartNo}</span>`;
+  if (k === 'Qty') return `<span class="num${edited}">${Number(r.Qty).toLocaleString()}</span>`;
+  if (k === 'TargetPrice') return `<span class="price${edited}">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
+  if (k === 'CurrencyID') return `<span class="tag tag-currency${edited}">${r.CurrencyID}</span>`;
   if (k === 'NewOld') {
     const cls = r.NewOld === '全新' ? 'new' : r.NewOld === '翻新' ? 'refurb' : 'old';
-    return `<span class="tag tag-${cls}">${r.NewOld}</span>`;
+    return `<span class="tag tag-${cls}${edited}">${r.NewOld}</span>`;
   }
   if (k === 'HuiFu') {
     const cls = r.HuiFu === '已回复' ? 'replied' : r.HuiFu === '待确认' ? 'pending' : 'noreply';
-    return `<span class="dot ${cls}">${r.HuiFu}</span>`;
+    return `<span class="dot ${cls}${edited}">${r.HuiFu}</span>`;
   }
-  if (k === '_act') return `<button class="ed" data-id="${r.id}">编辑</button>`;
-  return String(r[k] ?? '');
+  return `<span class="${edited ? 'edited' : ''}">${escapeHtml(String(v))}</span>`;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
 /* ============================ 虚拟滚动 ============================ */
@@ -307,15 +323,39 @@ const virt = new Virtualizer({
 });
 
 function renderRows() {
+  // 保存编辑中的光标位置
+  let selStart, selEnd;
+  if (editingCell) {
+    const oldInp = innerEl.querySelector('.ci');
+    if (oldInp && document.activeElement === oldInp) {
+      selStart = oldInp.selectionStart;
+      selEnd = oldInp.selectionEnd;
+    }
+  }
+
   const items = virt.getVirtualItems();
   innerEl.style.height = virt.getTotalSize() + 'px';
   innerEl.innerHTML = items.map(({ index, start, size }) => {
     const r = rows[index];
     if (!r) return '';
-    const cells = COLS.map(c => `<div class="cell" style="width:${c.w}px">${cell(c.k, r)}</div>`).join('');
-    return `<div class="row ${index % 2 ? 'odd' : 'even'}" style="top:${start}px;height:${size}px">${cells}</div>`;
+    const cells = COLS.map(c => `<div class="cell" style="width:${c.w}px" data-col="${c.k}" data-row="${index}">${cell(c.k, r, index)}</div>`).join('');
+    const editedCls = editedRows.has(r.id) ? ' row-edited' : '';
+    return `<div class="row ${index % 2 ? 'odd' : 'even'}${editedCls}" style="top:${start}px;height:${size}px">${cells}</div>`;
   }).join('');
   document.getElementById('rendered').textContent = items.length;
+
+  // 恢复编辑状态
+  if (editingCell) {
+    const inp = innerEl.querySelector('.ci');
+    if (inp) {
+      inp.focus();
+      if (selStart !== undefined) {
+        inp.setSelectionRange(selStart, selEnd);
+      } else {
+        inp.select();
+      }
+    }
+  }
 }
 
 function refresh() {
@@ -341,17 +381,114 @@ document.getElementById('thead').addEventListener('click', e => {
   refresh();
 });
 
-let tt;
+/* ============================ 编辑 ============================ */
+
+function commitEdit(input) {
+  const colKey = input.dataset.col;
+  const rowIdx = parseInt(input.dataset.row);
+  const newValue = input.value;
+
+  // 用 id 回找 ALL 中的行（rows 和 ALL 索引可能不同）
+  const rr = rows[rowIdx];
+  if (rr) {
+    rr[colKey] = newValue;
+    rr.edit = true;
+    editedRows.set(rr.id, { ...editedRows.get(rr.id), [colKey]: newValue });
+
+    const rAll = ALL.find(x => x.id === rr.id);
+    if (rAll) {
+      rAll[colKey] = newValue;
+      rAll.edit = true;
+    }
+  }
+
+  showToast(`已修改 ${colKey}`);
+}
+
+function cancelEdit() {
+  editingCell = null;
+  refresh();
+}
+
 innerEl.addEventListener('click', e => {
-  const b = e.target.closest('.ed');
-  if (!b) return;
-  const r = ALL.find(x => x.id === b.dataset.id);
+  // 编辑按钮 → 进入该行第一个可编辑列的编辑模式
+  const btn = e.target.closest('.ed');
+  if (btn) {
+    // 先提交当前编辑
+    const oldInp = innerEl.querySelector('.ci');
+    if (oldInp) commitEdit(oldInp);
+
+    const rAll = ALL.find(x => x.id === btn.dataset.id);
+    const rowIdx = rows.indexOf(rAll);
+    const firstEditable = COLS.find(c => c.k !== '_act' && c.k !== 'id');
+    if (rowIdx >= 0 && firstEditable) {
+      editingCell = { rowIdx, colKey: firstEditable.k };
+      refresh();
+    }
+    return;
+  }
+
+  // 点击可编辑 cell → 进入编辑
+  const cell = e.target.closest('.cell');
+  if (!cell) return;
+  const col = cell.dataset.col;
+  const row = parseInt(cell.dataset.row);
+  if (!col || isNaN(row)) return;
+  if (col === '_act' || col === 'id') return;
+
+  // 已在编辑中 → 先提交旧值
+  const oldInp = innerEl.querySelector('.ci');
+  if (oldInp && editingCell) {
+    commitEdit(oldInp);
+  }
+
+  editingCell = { rowIdx: row, colKey: col };
+  refresh();
+});
+
+// 监听 input 的键盘事件（委托）
+innerEl.addEventListener('keydown', e => {
+  if (!editingCell) return;
+  const inp = e.target.closest('.ci');
+  if (!inp) return;
+
+  if (e.key === 'Enter') { e.preventDefault(); commitEdit(inp); }
+  if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+});
+
+// blur 时自动提交
+innerEl.addEventListener('blur', e => {
+  const inp = e.target.closest('.ci');
+  if (inp && editingCell) commitEdit(inp);
+}, true);
+
+// Ctrl+S 保存
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (editedRows.size === 0) {
+      showToast('没有修改');
+      return;
+    }
+    const payload = [];
+    editedRows.forEach((fields, id) => {
+      payload.push({ id, ...fields });
+    });
+    console.log('💾 保存数据:', JSON.stringify(payload, null, 2));
+    showToast(`已保存 ${editedRows.size} 条记录（查看控制台）`);
+    editedRows.clear();
+    refresh();
+  }
+});
+
+let tt;
+function showToast(msg) {
   const t = document.getElementById('toast');
   clearTimeout(tt);
-  t.textContent = `✎ 编辑 ${r.PartNo} · ${r.Supplier}`;
+  t.textContent = msg;
   t.classList.add('on');
   tt = setTimeout(() => t.classList.remove('on'), 2000);
-});
+}
 
 /* ============================ 初始化（先拉列配置，再拉数据） ============================ */
 
