@@ -325,11 +325,14 @@ const virt = new Virtualizer({
   observeElementRect,
   observeElementOffset,
   scrollToFn: elementScroll,
-  onChange() { renderRows(); },
+  onChange() {
+    cancelAnimationFrame(virt._raf);
+    virt._raf = requestAnimationFrame(() => renderRows());
+  },
 });
 
+
 function renderRows() {
-  // 保存编辑中的光标位置
   let selStart, selEnd;
   if (editingCell) {
     const oldInp = innerEl.querySelector('.ci');
@@ -355,7 +358,6 @@ function renderRows() {
     return `<div class="${rowCls}" style="top:${start}px;height:${size}px">${cells}</div>`;
   }).join('');
 
-  // 恢复编辑状态
   if (editingCell) {
     const inp = innerEl.querySelector('.ci');
     if (inp) {
@@ -377,6 +379,7 @@ function refresh() {
   renderRows();
   const totalW = COLS.reduce((s, c) => s + c.w, 0);
   innerEl.style.minWidth = totalW + 'px';
+  document.getElementById('thead').style.width = totalW + 'px';
 }
 
 /* ============================ 事件 ============================ */
@@ -429,6 +432,7 @@ document.addEventListener('mousemove', e => {
 
   const totalW = COLS.reduce((s, c) => s + c.w, 0);
   innerEl.style.minWidth = totalW + 'px';
+  document.getElementById('thead').style.width = totalW + 'px';
 });
 
 document.addEventListener('mouseup', () => {
