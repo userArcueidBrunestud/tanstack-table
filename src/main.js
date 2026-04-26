@@ -282,18 +282,21 @@ function cell(k, r, rowIdx) {
     return `<input class="ci" value="${escapeHtml(String(v))}" data-col="${k}" data-row="${rowIdx}" />`;
   }
 
-  if (k === 'PartNo') return `<span class="pn">${r.PartNo}</span>`;
-  if (k === 'Qty') return `<span class="num">${Number(r.Qty).toLocaleString()}</span>`;
-  if (k === 'TargetPrice') return `<span class="price">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
-  if (k === 'CurrencyID') return `<span class="tag tag-currency">${r.CurrencyID}</span>`;
+  if (k === 'PartNo') {
+    const dimmed = r.isChaHuo !== '1' ? ' pn-dim' : '';
+    return `<span class="pn${dimmed}">${r.PartNo}</span>`;
+  }
+  if (k === 'Qty') return `<span class="cell-r">${Number(r.Qty).toLocaleString()}</span>`;
+  if (k === 'TargetPrice') return `<span class="cell-r">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
+  if (k === 'CurrencyID') return `<span class="cell-c">${r.CurrencyID}</span>`;
   if (k === 'NewOld') {
     const cls = r.NewOld === '全新' ? 'new' : r.NewOld === '翻新' ? 'refurb' : 'old';
-    return `<span class="tag tag-${cls}">${r.NewOld}</span>`;
+    return `<span class="cell-c"><span class="tag tag-${cls}">${r.NewOld}</span></span>`;
   }
-  if (k === 'Note') return `<button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button>`;
+  if (k === 'Note') return `<span class="cell-c"><button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button></span>`;
   if (k === 'HuiFu') {
     const cls = r.HuiFu === '已回复' ? 'replied' : r.HuiFu === '待确认' ? 'pending' : 'noreply';
-    return `<span class="dot ${cls}">${r.HuiFu}</span>`;
+    return `<span class="cell-c dot ${cls}">${r.HuiFu}</span>`;
   }
   return `<span>${escapeHtml(String(v))}</span>`;
 }
@@ -407,14 +410,27 @@ document.getElementById('thead').addEventListener('mousedown', e => {
 document.addEventListener('mousemove', e => {
   if (!resizing) return;
   const diff = e.clientX - resizing.startX;
-  COLS[resizing.ci].w = Math.max(40, resizing.startW + diff);
-  renderHead();
-  renderRows();
+  const newW = Math.max(40, resizing.startW + diff);
+  COLS[resizing.ci].w = newW;
+
+  // 直接改 DOM 宽，不重渲染
+  const th = document.querySelectorAll('.th')[resizing.ci];
+  if (th) th.style.width = newW + 'px';
+
+  document.querySelectorAll('.row').forEach(row => {
+    const cell = row.querySelectorAll('.cell')[resizing.ci];
+    if (cell) cell.style.width = newW + 'px';
+  });
+
   const totalW = COLS.reduce((s, c) => s + c.w, 0);
   innerEl.style.minWidth = totalW + 'px';
 });
 
-document.addEventListener('mouseup', () => { resizing = null; });
+document.addEventListener('mouseup', () => {
+  if (!resizing) return;
+  resizing = null;
+  refresh();
+});
 
 /* ============================ 编辑 ============================ */
 
