@@ -129,7 +129,7 @@ async function fetchColHeaders({
  * 对应 ErpPanel.getData: POST /CaiGouBJ/GetList + /CaiGouBJ/GetCount
  */
 async function fetchTableData({
-  pagination = { current: 1, pageSize: 10 },
+  pagination = { current: 1, pageSize: 50 },
   sortField = null,
   sortOrder = null,
 } = {}) {
@@ -239,7 +239,7 @@ let rows = [];
 let totalFromApi = 0;
 let sortK = '', sortD = false;
 let tableParams = {
-  pagination: { current: 1, pageSize: 10 },
+  pagination: { current: 1, pageSize: 500 },
   sortField: null,
   sortOrder: null,
 };
