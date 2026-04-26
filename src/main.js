@@ -242,12 +242,24 @@ const selectedRows = new Set(); // row id
 
 function applyFilter() {
   rows = ALL;
-  if (sortK) {
-    rows = [...rows].sort((a, b) => {
-      const c = typeof a[sortK] === 'number' ? a[sortK] - b[sortK] : String(a[sortK]).localeCompare(String(b[sortK]));
-      return sortD ? -c : c;
-    });
+}
+
+async function sortAndFetch() {
+  tableParams.sortField = sortK || null;
+  tableParams.sortOrder = sortK ? (sortD ? 'desc' : 'asc') : null;
+  tableParams.pagination.current = 1;
+
+  const { data } = await fetchTableData({
+    pagination: tableParams.pagination,
+    sortField: tableParams.sortField,
+    sortOrder: tableParams.sortOrder,
+  });
+
+  if (data.length) {
+    ALL = data;
   }
+
+  refresh();
 }
 
 /* ============================ 渲染 ============================ */
@@ -487,10 +499,13 @@ document.getElementById('thead').addEventListener('click', e => {
 
   const k = e.target.closest('[data-s]')?.dataset.s;
   if (!k) return;
+
+  // 三段循环：normal → asc → desc → normal
   if (sortK !== k) { sortK = k; sortD = false; }
   else if (!sortD) { sortD = true; }
   else { sortK = ''; sortD = false; }
-  refresh();
+
+  sortAndFetch();
 });
 
 /* ============================ 列宽拖拽 ============================ */
