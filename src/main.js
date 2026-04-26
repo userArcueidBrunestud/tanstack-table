@@ -14,8 +14,10 @@ document.getElementById('app').innerHTML = `
 </div>
 
 <div class="wrap">
-  <div class="thead" id="thead"></div>
-  <div id="scroll"><div id="inner"></div></div>
+  <div id="scroll">
+    <div class="thead" id="thead"></div>
+    <div id="inner"></div>
+  </div>
   <div class="foot">
     <span>虚拟滚动 · 仅渲染可视行</span>
   </div>
@@ -324,14 +326,7 @@ function refresh() {
   renderRows();
   const totalW = COLS.reduce((s, c) => s + c.w, 0);
   innerEl.style.minWidth = totalW + 'px';
-  document.getElementById('thead').style.minWidth = totalW + 'px';
 }
-
-/* ============================ 表头横向跟随表身滚动 ============================ */
-
-scrollEl.addEventListener('scroll', () => {
-  document.getElementById('thead').style.transform = `translateX(${-scrollEl.scrollLeft}px)`;
-});
 
 /* ============================ 事件 ============================ */
 
