@@ -429,6 +429,7 @@ innerEl.addEventListener('click', e => {
     if (e.target.checked) selectedRows.add(id);
     else selectedRows.delete(id);
     renderHead();
+    renderRows();
     return;
   }
 
@@ -455,13 +456,19 @@ innerEl.addEventListener('click', e => {
     return;
   }
 
-  // 点击可编辑 cell → 进入编辑
+  // 点击单元格 → 进入编辑 + 勾选该行
   const cell = e.target.closest('.cell');
   if (!cell) return;
   const col = cell.dataset.col;
   const row = parseInt(cell.dataset.row);
   if (!col || isNaN(row)) return;
-  if (col === '_act' || col === 'id' || col === '_idx' || col === '_sel' || col === 'Note') return;
+  if (col === '_act' || col === '_sel' || col === 'Note') return;
+
+  // 勾选该行
+  const r = rows[row];
+  if (r && !selectedRows.has(r.id)) {
+    selectedRows.add(r.id);
+  }
 
   // 已在编辑中 → 先提交旧值
   const oldInp = innerEl.querySelector('.ci');
