@@ -249,15 +249,15 @@ function applyFilter() {
 /* ============================ 渲染 ============================ */
 
 function renderHead() {
-  document.getElementById('thead').innerHTML = COLS.map(c => {
+  document.getElementById('thead').innerHTML = COLS.map((c, i) => {
     if (c.k === '_sel') {
       const allSel = rows.length > 0 && rows.every(r => selectedRows.has(r.id));
-      return `<div class="th" style="width:${c.w}px"><input type="checkbox" class="sel-all" data-all="${allSel ? '1' : '0'}"></div>`;
+      return `<div class="th" style="width:${c.w}px"><input type="checkbox" class="sel-all" data-all="${allSel ? '1' : '0'}"><div class="rh" data-ci="${i}"></div></div>`;
     }
     const cls = c.k === sortK ? (sortD ? 'desc' : 'asc') : '';
-    const arr = c.s ? (c.k === sortK ? (sortD ? ' ▼' : ' ▲') : ' ⇅') : '';
+    const arr = c.s ? (c.k === sortK ? (sortD ? ' ▼' : ' ▲') : '') : '';
     return `<div class="th ${cls}" style="width:${c.w}px"
-      ${c.s ? `data-s="${c.k}"` : ''}>${c.l}${arr}</div>`;
+      ${c.s ? `data-s="${c.k}"` : ''}>${c.l}${arr}<div class="rh" data-ci="${i}"></div></div>`;
   }).join('');
 
   // 处理全选复选框的半选状态
@@ -392,6 +392,28 @@ document.getElementById('thead').addEventListener('click', e => {
   else { sortK = ''; sortD = false; }
   refresh();
 });
+
+/* ============================ 列宽拖拽 ============================ */
+
+let resizing = null; // { ci, startX, startW }
+
+document.getElementById('thead').addEventListener('mousedown', e => {
+  if (!e.target.classList.contains('rh')) return;
+  e.preventDefault();
+  const ci = parseInt(e.target.dataset.ci);
+  resizing = { ci, startX: e.clientX, startW: COLS[ci].w };
+});
+
+document.addEventListener('mousemove', e => {
+  if (!resizing) return;
+  const diff = e.clientX - resizing.startX;
+  COLS[resizing.ci].w = Math.max(40, resizing.startW + diff);
+  renderHead();
+  const totalW = COLS.reduce((s, c) => s + c.w, 0);
+  innerEl.style.minWidth = totalW + 'px';
+});
+
+document.addEventListener('mouseup', () => { resizing = null; });
 
 /* ============================ 编辑 ============================ */
 
