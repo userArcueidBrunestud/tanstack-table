@@ -4,22 +4,10 @@ import { get, post } from './request.js'
 
 /* ✅ 把你 body 里的 HTML 原样塞进来 */
 document.getElementById('app').innerHTML = `
-<h1>DATA<span>/</span>GRID</h1>
-<p class="sub">@tanstack/virtual-core · vanilla js</p>
-
-<div class="bar">
-  <input id="q" type="text" placeholder="搜索物料编码 / 品牌 / 供应商…"/>
-  <div class="badge">共 <b id="total">0</b> 条</div>
-  <div class="badge">渲染 <b id="rendered">0</b> 行</div>
-</div>
-
 <div class="wrap">
   <div id="scroll">
     <div class="thead" id="thead"></div>
     <div id="inner"></div>
-  </div>
-  <div class="foot">
-    <span>虚拟滚动 · 仅渲染可视行</span>
   </div>
 </div>
 <div id="toast"></div>
@@ -146,7 +134,6 @@ async function fetchTableData({
     if (pagination.current === 1) {
       post("/CaiGouBJ/GetCount", fd).then((res) => {
         totalFromApi = res.total;
-        document.getElementById('total').textContent = totalFromApi;
       });
     }
 
@@ -245,36 +232,48 @@ let tableParams = {
 };
 let editingCell = null; // { rowIdx, colKey } | null
 const editedRows = new Map(); // rowId -> changedFields
+const selectedRows = new Set(); // row id
 
 /* ============================ 过滤 & 排序 ============================ */
 
 function applyFilter() {
-  const q = document.getElementById('q').value.trim().toLowerCase();
-  rows = q
-    ? ALL.filter(r => r.PartNo.toLowerCase().includes(q) || r.Brand.toLowerCase().includes(q) || r.Supplier.toLowerCase().includes(q) || r.ShortName.toLowerCase().includes(q))
-    : ALL;
+  rows = ALL;
   if (sortK) {
     rows = [...rows].sort((a, b) => {
       const c = typeof a[sortK] === 'number' ? a[sortK] - b[sortK] : String(a[sortK]).localeCompare(String(b[sortK]));
       return sortD ? -c : c;
     });
   }
-  document.getElementById('total').textContent = totalFromApi || rows.length;
 }
 
 /* ============================ 渲染 ============================ */
 
 function renderHead() {
   document.getElementById('thead').innerHTML = COLS.map(c => {
+    if (c.k === '_sel') {
+      const allSel = rows.length > 0 && rows.every(r => selectedRows.has(r.id));
+      return `<div class="th" style="width:${c.w}px"><input type="checkbox" class="sel-all" data-all="${allSel ? '1' : '0'}"></div>`;
+    }
     const cls = c.k === sortK ? (sortD ? 'desc' : 'asc') : '';
     const arr = c.s ? (c.k === sortK ? (sortD ? ' ▼' : ' ▲') : ' ⇅') : '';
     return `<div class="th ${cls}" style="width:${c.w}px"
       ${c.s ? `data-s="${c.k}"` : ''}>${c.l}${arr}</div>`;
   }).join('');
+
+  // 处理全选复选框的半选状态
+  const cb = document.querySelector('.sel-all');
+  if (cb) {
+    const someSel = rows.some(r => selectedRows.has(r.id));
+    const allSel = rows.length > 0 && rows.every(r => selectedRows.has(r.id));
+    cb.checked = allSel;
+    cb.indeterminate = someSel && !allSel;
+  }
 }
 
 function cell(k, r, rowIdx) {
   const v = r[k] ?? '';
+  if (k === '_idx') return `<span class="dim">${rowIdx + 1}</span>`;
+  if (k === '_sel') return `<input type="checkbox" class="sel-row" data-id="${r.id}" ${selectedRows.has(r.id) ? 'checked' : ''}>`;
   if (k === 'id') return `<span class="dim">#${r.id}</span>`;
   if (k === '_act') return `<button class="ed" data-id="${r.id}">编辑</button>`;
 
@@ -292,6 +291,7 @@ function cell(k, r, rowIdx) {
     const cls = r.NewOld === '全新' ? 'new' : r.NewOld === '翻新' ? 'refurb' : 'old';
     return `<span class="tag tag-${cls}${edited}">${r.NewOld}</span>`;
   }
+  if (k === 'Note') return `<button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button>`;
   if (k === 'HuiFu') {
     const cls = r.HuiFu === '已回复' ? 'replied' : r.HuiFu === '待确认' ? 'pending' : 'noreply';
     return `<span class="dot ${cls}${edited}">${r.HuiFu}</span>`;
@@ -342,7 +342,6 @@ function renderRows() {
     const editedCls = editedRows.has(r.id) ? ' row-edited' : '';
     return `<div class="row ${index % 2 ? 'odd' : 'even'}${editedCls}" style="top:${start}px;height:${size}px">${cells}</div>`;
   }).join('');
-  document.getElementById('rendered').textContent = items.length;
 
   // 恢复编辑状态
   if (editingCell) {
@@ -370,9 +369,18 @@ function refresh() {
 
 /* ============================ 事件 ============================ */
 
-document.getElementById('q').addEventListener('input', refresh);
-
 document.getElementById('thead').addEventListener('click', e => {
+  // 全选复选框
+  if (e.target.classList.contains('sel-all')) {
+    if (e.target.checked) {
+      rows.forEach(r => selectedRows.add(r.id));
+    } else {
+      rows.forEach(r => selectedRows.delete(r.id));
+    }
+    renderRows();
+    return;
+  }
+
   const k = e.target.closest('[data-s]')?.dataset.s;
   if (!k) return;
   if (sortK !== k) { sortK = k; sortD = false; }
@@ -411,6 +419,21 @@ function cancelEdit() {
 }
 
 innerEl.addEventListener('click', e => {
+  // 行选择复选框
+  if (e.target.classList.contains('sel-row')) {
+    const id = e.target.dataset.id;
+    if (e.target.checked) selectedRows.add(id);
+    else selectedRows.delete(id);
+    renderHead();
+    return;
+  }
+
+  // 备注按钮
+  if (e.target.classList.contains('note-btn')) {
+    showNotePopover(e.target, e.target.dataset.id);
+    return;
+  }
+
   // 编辑按钮 → 进入该行第一个可编辑列的编辑模式
   const btn = e.target.closest('.ed');
   if (btn) {
@@ -434,7 +457,7 @@ innerEl.addEventListener('click', e => {
   const col = cell.dataset.col;
   const row = parseInt(cell.dataset.row);
   if (!col || isNaN(row)) return;
-  if (col === '_act' || col === 'id') return;
+  if (col === '_act' || col === 'id' || col === '_idx' || col === '_sel' || col === 'Note') return;
 
   // 已在编辑中 → 先提交旧值
   const oldInp = innerEl.querySelector('.ci');
@@ -490,6 +513,99 @@ function showToast(msg) {
   tt = setTimeout(() => t.classList.remove('on'), 2000);
 }
 
+/* ============================ 备注 popover ============================ */
+
+let notePopover = null;
+let noteCurrentId = null;
+
+function createNotePopover() {
+  if (notePopover) return notePopover;
+  const el = document.createElement('div');
+  el.className = 'note-popover';
+  el.innerHTML = `
+    <div class="np-list"></div>
+    <div class="np-foot">
+      <input class="np-input" placeholder="输入备注…" />
+      <button class="np-save">保存</button>
+    </div>
+  `;
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    if (e.target.classList.contains('np-save')) saveNote();
+  });
+  el.querySelector('.np-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveNote();
+  });
+  document.body.appendChild(el);
+  notePopover = el;
+  return el;
+}
+
+async function loadNotes(billId) {
+  const listEl = notePopover.querySelector('.np-list');
+  listEl.innerHTML = '<span class="dim" style="padding:8px">加载中…</span>';
+  const fd = new FormData();
+  fd.append('Test', 'true');
+  fd.append('BillID', billId);
+  fd.append('DetaillD', '0');
+  fd.append('BillPage', 'CaiGouBJ');
+  try {
+    const res = await post('/note/List', fd);
+    if (res.note?.length) {
+      listEl.innerHTML = res.note.map(item => `
+        <div class="np-item">
+          <div class="np-meta">${escapeHtml(item.UserName || '')} · ${escapeHtml(item.CreateTime || '')}</div>
+          <div class="np-text">${escapeHtml(item.Note?.Note || '')}</div>
+        </div>
+      `).join('');
+    } else {
+      listEl.innerHTML = '<span class="dim" style="padding:8px">暂无备注</span>';
+    }
+  } catch {
+    listEl.innerHTML = '<span class="dim" style="padding:8px">加载失败</span>';
+  }
+}
+
+async function saveNote() {
+  const input = notePopover.querySelector('.np-input');
+  const val = input.value.trim();
+  if (!val) return;
+  const fd = new FormData();
+  fd.append('BillID', noteCurrentId);
+  fd.append('DetailID ', '0');
+  fd.append('BillPage', 'CaiGouBJ');
+  fd.append('Note', val);
+  fd.append('noteFiles', '');
+  try {
+    await post('/note/Save', fd);
+    input.value = '';
+    loadNotes(noteCurrentId);
+  } catch { /* ignore */ }
+}
+
+function showNotePopover(btn, id) {
+  createNotePopover();
+  noteCurrentId = id;
+
+  const rect = btn.getBoundingClientRect();
+  const left = Math.min(rect.left, window.innerWidth - 310);
+  notePopover.style.left = left + 'px';
+  notePopover.style.top = (rect.bottom + 6) + 'px';
+  notePopover.classList.add('on');
+
+  loadNotes(id);
+}
+
+function hideNotePopover() {
+  if (notePopover) notePopover.classList.remove('on');
+}
+
+document.addEventListener('click', e => {
+  if (notePopover && notePopover.classList.contains('on') && !notePopover.contains(e.target) && !e.target.closest('.note-btn')) {
+    hideNotePopover();
+  }
+});
+
 /* ============================ 初始化（先拉列配置，再拉数据） ============================ */
 
 async function init() {
@@ -506,6 +622,13 @@ async function init() {
   if (result?.columns?.length) {
     COLS = toUIOColumns(result.columns);
   }
+
+  // 前插序号列和选择列
+  COLS = [
+    { k: '_idx', l: '#', w: 50 },
+    { k: '_sel', l: '', w: 40 },
+    ...COLS,
+  ];
 
   // 2. 拉数据（失败或空就用 mock）
   const { data, total } = await fetchTableData({
