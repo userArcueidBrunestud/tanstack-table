@@ -17,6 +17,7 @@ document.getElementById('app').innerHTML = `
 
 const BillPage = "CaiGouBJ_ChaHuo";
 const NO_SELECT_FIELDS = ["备注"];
+let colorList = [];
 const RENDER_MAP = {
   Note: "Note",
   HuiFu: "HuiFu",
@@ -289,14 +290,17 @@ function cell(k, r, rowIdx) {
   if (k === 'Qty') return `<span class="cell-r">${Number(r.Qty).toLocaleString()}</span>`;
   if (k === 'TargetPrice') return `<span class="cell-r">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
   if (k === 'CurrencyID') return `<span class="cell-c">${r.CurrencyID}</span>`;
-  if (k === 'NewOld') {
-    const cls = r.NewOld === '全新' ? 'new' : r.NewOld === '翻新' ? 'refurb' : 'old';
-    return `<span class="cell-c"><span class="tag tag-${cls}">${r.NewOld}</span></span>`;
+  if (k === 'ImpValueF') {
+    const m = colorList.find(item => item.Name === v);
+    const bg = m ? m.Color : 'transparent';
+    const c = m ? '#fff' : 'var(--dim)';
+    return `<span class="cell-c"><span class="iv-badge" style="background:${bg};color:${c}">${v || '-'}</span></span>`;
   }
+  if (k === 'NewOld') return `<span class="cell-c">${r.NewOld}</span>`;
   if (k === 'Note') return `<span class="cell-c"><button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button></span>`;
   if (k === 'HuiFu') {
-    const cls = r.HuiFu === '已回复' ? 'replied' : r.HuiFu === '待确认' ? 'pending' : 'noreply';
-    return `<span class="cell-c dot ${cls}">${r.HuiFu}</span>`;
+    const c = r.HuiFu === '已回复' ? '#07c160' : r.HuiFu === '待确认' ? '#f0c060' : 'var(--dim)';
+    return `<span class="cell-c" style="color:${c}">${r.HuiFu}</span>`;
   }
   return `<span>${escapeHtml(String(v))}</span>`;
 }
@@ -487,7 +491,7 @@ innerEl.addEventListener('click', e => {
 
     const rAll = ALL.find(x => x.id === btn.dataset.id);
     const rowIdx = rows.indexOf(rAll);
-    const firstEditable = COLS.find(c => c.k !== '_act' && c.k !== 'id');
+    const firstEditable = COLS.find(c => c.k !== '_act' && c.k !== 'id' && c.k !== '_idx' && c.k !== '_sel' && c.k !== 'Note');
     if (rowIdx >= 0 && firstEditable) {
       editingCell = { rowIdx, colKey: firstEditable.k };
       refresh();
@@ -659,6 +663,14 @@ document.addEventListener('click', e => {
 /* ============================ 初始化（先拉列配置，再拉数据） ============================ */
 
 async function init() {
+  // 0. 拉重要程度色表
+  try {
+    const fd = new FormData();
+    fd.append('CodeType', '询价重要程度');
+    const res = await post('/sys_code/CodeSelect', fd);
+    colorList = res || [];
+  } catch { /* ignore */ }
+
   // 1. 拉列配置（失败就用 DEFAULT_COLS）
   const result = await fetchColHeaders({
     url: "",
