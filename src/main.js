@@ -287,20 +287,20 @@ function cell(k, r, rowIdx) {
     const dimmed = r.isChaHuo !== '1' ? ' pn-dim' : '';
     return `<span class="pn${dimmed}">${r.PartNo}</span>`;
   }
-  if (k === 'Qty') return `<span class="cell-r">${Number(r.Qty).toLocaleString()}</span>`;
-  if (k === 'TargetPrice') return `<span class="cell-r">${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
-  if (k === 'CurrencyID') return `<span class="cell-c">${r.CurrencyID}</span>`;
+  if (k === 'Qty') return `<span>${Number(r.Qty).toLocaleString()}</span>`;
+  if (k === 'TargetPrice') return `<span>${r.CurrencyID === 'USD' ? '$' : '¥'}${r.TargetPrice}</span>`;
+  if (k === 'CurrencyID') return `<span>${r.CurrencyID}</span>`;
   if (k === 'ImpValueF') {
     const m = colorList.find(item => item.Name === v);
     const bg = m ? m.Color : 'transparent';
     const c = m ? '#fff' : 'var(--dim)';
-    return `<span class="cell-c"><span class="iv-badge" style="background:${bg};color:${c}">${v}</span></span>`;
+    return `<span class="iv-badge" style="background:${bg};color:${c}">${v}</span>`;
   }
-  if (k === 'NewOld') return `<span class="cell-c">${r.NewOld}</span>`;
-  if (k === 'Note') return `<span class="cell-c"><button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button></span>`;
+  if (k === 'NewOld') return `<span>${r.NewOld}</span>`;
+  if (k === 'Note') return `<button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button>`;
   if (k === 'HuiFu') {
     const c = r.HuiFu === '已回复' ? '#4a90d9' : r.HuiFu === '待确认' ? '#f0c060' : 'var(--dim)';
-    return `<span class="cell-c" style="color:${c}">${r.HuiFu}</span>`;
+    return `<span style="color:${c}">${r.HuiFu}</span>`;
   }
   return `<span>${escapeHtml(String(v))}</span>`;
 }
