@@ -1,37 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>高性能表格 · TanStack + jQuery</title>
-  <style>
-    #table-root {
-      height: 400px;
-      overflow: auto;
-      border: 1px solid #ccc;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px 12px;
-      text-align: left;
-    }
-    th {
-      background: #f5f5f5;
-      position: sticky;
-      top: 0;
-    }
-    .edit-btn {
-      cursor: pointer;
-    }
-  </style>
+  <meta charset="UTF-8"/>
+  <title>Virtual Table Demo</title>
 </head>
 <body>
-  <div id="table-root"></div>
-  <!-- 告诉 Vite 入口文件是 src/main.js -->
+  <div id="app"></div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
