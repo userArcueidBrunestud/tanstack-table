@@ -765,6 +765,12 @@ async function saveNote() {
     await post('/note/Save', fd);
     input.value = '';
     loadNotes(noteCurrentId);
+    // 更新行数据，让备注按钮变色
+    const rAll = ALL.find(x => x.id === noteCurrentId);
+    if (rAll) rAll.Note = val;
+    const rRow = rows.find(x => x.id === noteCurrentId);
+    if (rRow) rRow.Note = val;
+    renderRows();
   } catch { /* ignore */ }
 }
 
