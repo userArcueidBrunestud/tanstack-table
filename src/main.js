@@ -5,6 +5,7 @@ import { get, post } from './request.js'
 /* ✅ 把你 body 里的 HTML 原样塞进来 */
 document.getElementById('app').innerHTML = `
 <div class="wrap">
+  <div id="loading-bar"></div>
   <div id="scroll">
     <div class="thead" id="thead"></div>
     <div id="inner"></div>
@@ -244,10 +245,18 @@ function applyFilter() {
   rows = ALL;
 }
 
+let sortVersion = 0;
+
 async function sortAndFetch() {
   tableParams.sortField = sortK || null;
   tableParams.sortOrder = sortK ? (sortD ? 'desc' : 'asc') : null;
   tableParams.pagination.current = 1;
+
+  // 乐观更新：立即刷新表头箭头，不等待 API
+  renderHead();
+
+  const version = ++sortVersion;
+  document.getElementById('loading-bar').classList.add('on');
 
   const { data } = await fetchTableData({
     pagination: tableParams.pagination,
@@ -255,11 +264,21 @@ async function sortAndFetch() {
     sortOrder: tableParams.sortOrder,
   });
 
+  // 忽略过期请求（快速点击时）
+  if (version !== sortVersion) return;
+
+  document.getElementById('loading-bar').classList.remove('on');
+
   if (data.length) {
     ALL = data;
   }
 
-  refresh();
+  // 只重渲染行，跳过表头（列没变）
+  applyFilter();
+  virt.options.count = rows.length;
+  virt._willUpdate();
+  renderRows();
+  updateSelOverlay();
 }
 
 /* ============================ 渲染 ============================ */

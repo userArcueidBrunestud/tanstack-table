@@ -9,7 +9,12 @@ input{background:var(--sur);border:1px solid var(--b2);color:var(--tx);
 input:focus{border-color:var(--g)}
 input::placeholder{color:var(--dim)}
 /* table */
-.wrap{border:1px solid var(--b1);overflow:hidden;max-width:100%}
+.wrap{border:1px solid var(--b1);overflow:hidden;max-width:100%;position:relative}
+#loading-bar{position:absolute;top:0;left:0;right:0;height:3px;z-index:10;
+  background:linear-gradient(90deg,transparent 0%,var(--bl) 50%,transparent 100%);
+  transform:translateX(-100%);opacity:0;transition:opacity .15s}
+#loading-bar.on{opacity:1;animation:loading-slide .8s ease infinite}
+@keyframes loading-slide{to{transform:translateX(100%)}}
 .thead{display:flex;background:#f0f1f3;border-bottom:1px solid var(--b2);
   position:sticky;top:0;left:0;z-index:2}
 .th{padding:0 12px;height:36px;display:flex;align-items:center;flex-shrink:0;
