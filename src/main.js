@@ -473,6 +473,15 @@ function refresh() {
   document.getElementById('thead').style.width = totalW + 'px';
 }
 
+// 轻量刷新：只重绘行，跳过表头和列宽（用于编辑导航）
+function refreshRows() {
+  applyFilter();
+  virt.options.count = rows.length;
+  cancelAnimationFrame(virt._raf);
+  renderRows();
+  updateSelOverlay();
+}
+
 /* ============================ 框选事件 ============================ */
 
 innerEl.addEventListener('mousedown', e => {
@@ -797,7 +806,7 @@ function moveEdit(dRow, dCol) {
   editingCell = { rowIdx: newRow, colKey: COLS[eCols[ei]].k };
   selRange = { r1: newRow, c1: eCols[ei], r2: newRow, c2: eCols[ei] };
   virt.scrollToIndex(newRow);
-  refresh();
+  refreshRows();
 }
 
 innerEl.addEventListener('keydown', e => {
