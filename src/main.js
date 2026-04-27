@@ -6,6 +6,11 @@ import { get, post } from './request.js'
 document.getElementById('app').innerHTML = `
 <div class="wrap">
   <div id="loading-bar"></div>
+  <div id="filter-bar">
+    <button class="fb-btn on" data-filter="all">全部</button>
+    <button class="fb-btn" data-filter="replied">已回复</button>
+    <button class="fb-btn" data-filter="unreplied">未回复</button>
+  </div>
   <div id="scroll">
     <div class="thead" id="thead"></div>
     <div id="inner"></div>
@@ -251,8 +256,12 @@ const selectedRows = new Set(); // row id
 
 /* ============================ 过滤 & 排序 ============================ */
 
+let huiFuFilter = 'all'; // 'all' | 'replied' | 'unreplied'
+
 function applyFilter() {
   rows = ALL;
+  if (huiFuFilter === 'replied') rows = rows.filter(r => r.HuiFu === '已回复');
+  if (huiFuFilter === 'unreplied') rows = rows.filter(r => r.HuiFu !== '已回复');
 }
 
 let sortVersion = 0;
@@ -345,7 +354,7 @@ function cell(k, r, rowIdx) {
   if (k === 'HuiFu') {
     const vv = r.HuiFu || '未回复';
     const c = vv === '已回复' ? '#4a90d9' : vv === '待确认' ? '#f0c060' : 'var(--dim)';
-    return `<span class="hf-tag" data-id="${r.id}" data-val="${vv}" style="color:${c}">${vv}</span>`;
+    return `<span style="color:${c}">${vv}</span>`;
   }
   return `<span>${escapeHtml(String(v))}</span>`;
 }
@@ -592,6 +601,15 @@ document.addEventListener('mousedown', e => {
 
 /* ============================ 事件 ============================ */
 
+// 回复状态筛选
+document.getElementById('filter-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.fb-btn');
+  if (!btn) return;
+  huiFuFilter = btn.dataset.filter;
+  document.querySelectorAll('.fb-btn').forEach(b => b.classList.toggle('on', b === btn));
+  refresh();
+});
+
 document.getElementById('thead').addEventListener('click', e => {
   // 全选复选框
   if (e.target.classList.contains('sel-all')) {
@@ -696,19 +714,6 @@ innerEl.addEventListener('click', e => {
   // 备注按钮
   if (e.target.classList.contains('note-btn')) {
     showNotePopover(e.target, e.target.dataset.id);
-    return;
-  }
-
-  // 回复状态切换
-  if (e.target.classList.contains('hf-tag')) {
-    const id = e.target.dataset.id;
-    const cur = e.target.dataset.val;
-    const next = cur === '已回复' ? '未回复' : '已回复';
-    const rAll = ALL.find(x => x.id === id);
-    if (rAll) rAll.HuiFu = next;
-    const rRow = rows.find(x => x.id === id);
-    if (rRow) rRow.HuiFu = next;
-    refresh();
     return;
   }
 
