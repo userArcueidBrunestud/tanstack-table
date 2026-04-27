@@ -343,8 +343,9 @@ function cell(k, r, rowIdx) {
   if (k === 'NewOld') return `<span>${r.NewOld}</span>`;
   if (k === 'Note') return `<button class="note-btn${v ? ' has-note' : ''}" data-id="${r.id}">备注</button>`;
   if (k === 'HuiFu') {
-    const c = r.HuiFu === '已回复' ? '#4a90d9' : r.HuiFu === '待确认' ? '#f0c060' : 'var(--dim)';
-    return `<span style="color:${c}">${r.HuiFu}</span>`;
+    const vv = r.HuiFu || '未回复';
+    const c = vv === '已回复' ? '#4a90d9' : vv === '待确认' ? '#f0c060' : 'var(--dim)';
+    return `<span class="hf-tag" data-id="${r.id}" data-val="${vv}" style="color:${c}">${vv}</span>`;
   }
   return `<span>${escapeHtml(String(v))}</span>`;
 }
@@ -698,6 +699,19 @@ innerEl.addEventListener('click', e => {
     return;
   }
 
+  // 回复状态切换
+  if (e.target.classList.contains('hf-tag')) {
+    const id = e.target.dataset.id;
+    const cur = e.target.dataset.val;
+    const next = cur === '已回复' ? '未回复' : '已回复';
+    const rAll = ALL.find(x => x.id === id);
+    if (rAll) rAll.HuiFu = next;
+    const rRow = rows.find(x => x.id === id);
+    if (rRow) rRow.HuiFu = next;
+    refresh();
+    return;
+  }
+
   // 编辑按钮 → 进入该行第一个可编辑列的编辑模式
   const btn = e.target.closest('.ed');
   if (btn) {
@@ -753,14 +767,52 @@ innerEl.addEventListener('click', e => {
   refresh();
 });
 
-// 监听 input 的键盘事件（委托）
+// 监听 input 的键盘事件（委托）— Excel 风格快捷键
+function editableCols() {
+  return COLS.reduce((arr, c, i) => {
+    if (c.k !== '_act' && c.k !== 'id' && c.k !== '_idx' && c.k !== '_sel' && c.k !== 'Note') arr.push(i);
+    return arr;
+  }, []);
+}
+
+function moveEdit(dRow, dCol) {
+  const eCols = editableCols();
+  const curColIdx = COLS.findIndex(c => c.k === editingCell.colKey);
+  let ei = eCols.indexOf(curColIdx);
+  let newRow = editingCell.rowIdx + dRow;
+
+  if (dCol !== 0) {
+    ei += dCol;
+    if (ei < 0) { ei = eCols.length - 1; newRow = Math.max(0, newRow - 1); }
+    if (ei >= eCols.length) { ei = 0; newRow = Math.min(rows.length - 1, newRow + 1); }
+  }
+  newRow = Math.max(0, Math.min(rows.length - 1, newRow));
+  ei = Math.max(0, Math.min(eCols.length - 1, ei));
+
+  editingCell = { rowIdx: newRow, colKey: COLS[eCols[ei]].k };
+  selRange = { r1: newRow, c1: eCols[ei], r2: newRow, c2: eCols[ei] };
+  virt.scrollToIndex(newRow);
+  refresh();
+}
+
 innerEl.addEventListener('keydown', e => {
   if (!editingCell) return;
   const inp = e.target.closest('.ci');
   if (!inp) return;
 
-  if (e.key === 'Enter') { e.preventDefault(); commitEdit(inp); }
-  if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+  if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); return; }
+  if (e.key === 'Enter') { e.preventDefault(); commitEdit(inp); moveEdit(e.shiftKey ? -1 : 1, 0); return; }
+  if (e.key === 'Tab') { e.preventDefault(); commitEdit(inp); moveEdit(0, e.shiftKey ? -1 : 1); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); commitEdit(inp); moveEdit(-1, 0); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); commitEdit(inp); moveEdit(1, 0); return; }
+  if (e.key === 'ArrowLeft') {
+    if (inp.selectionStart === 0) { e.preventDefault(); commitEdit(inp); moveEdit(0, -1); }
+    return;
+  }
+  if (e.key === 'ArrowRight') {
+    if (inp.selectionStart === inp.value.length) { e.preventDefault(); commitEdit(inp); moveEdit(0, 1); }
+    return;
+  }
 });
 
 // blur 时自动提交
@@ -856,8 +908,15 @@ ctxMenu.addEventListener('click', async e => {
         fd.append('GongHai', gongHai);
         fd.append('BillPage', 'CaiGouBJ');
         await post('/CaiGouBJ/NoStock', fd);
+        // 更新回复状态为"已回复"并取消勾选
+        const rAll = ALL.find(x => x.id === id);
+        if (rAll) { rAll.HuiFu = '已回复'; rAll.isCheck = false; }
+        const rRow = rows.find(x => x.id === id);
+        if (rRow) { rRow.HuiFu = '已回复'; rRow.isCheck = false; }
+        selectedRows.delete(id);
       }
       showToast(gongHai === '0' ? '无货提醒已发送' : '已转公海');
+      refresh();
       break;
     }
     case 'delete': {

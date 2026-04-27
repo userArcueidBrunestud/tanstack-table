@@ -87,3 +87,5 @@ button.note-btn.has-note{background:rgba(74,144,217,.1);color:var(--g);border-co
 .ctx-item:hover{background:#f0f1f3}
 .ctx-danger{color:var(--r)}.ctx-danger:hover{background:#fef0f0}
 .ctx-sep{height:1px;background:var(--b1);margin:4px 0}
+.hf-tag{cursor:pointer;user-select:none;padding:2px 6px;border-radius:3px}
+.hf-tag:hover{background:rgba(74,144,217,.1)}
