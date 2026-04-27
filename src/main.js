@@ -237,6 +237,7 @@ const editedRows = new Map(); // rowId -> changedFields
 let selRange = null; // { r1, c1, r2, c2 } — 框选范围（col 是 COLS 索引）
 let selDragging = false;
 let selDragMoved = false;
+let selCheckMode = false; // 从复选框列拖拽 → 多选
 const selectedRows = new Set(); // row id
 
 /* ============================ 过滤 & 排序 ============================ */
@@ -454,7 +455,7 @@ function refresh() {
 innerEl.addEventListener('mousedown', e => {
   const cell = e.target.closest('.cell');
   if (!cell) {
-    selRange = null;
+    selRange = null; selCheckMode = false;
     updateSelOverlay();
     return;
   }
@@ -466,12 +467,74 @@ innerEl.addEventListener('mousedown', e => {
   selRange = { r1: rowIdx, c1: colIdx, r2: rowIdx, c2: colIdx };
   selDragging = true;
   selDragMoved = false;
+  selCheckMode = colKey === '_sel';
   updateSelOverlay();
 });
+
+function updateCheckRange() {
+  const r1 = Math.min(selRange.r1, selRange.r2);
+  const r2 = Math.max(selRange.r1, selRange.r2);
+  for (let i = r1; i <= r2; i++) {
+    const r = rows[i];
+    if (r) selectedRows.add(r.id);
+  }
+  // 直接更新可见的 checkbox DOM
+  innerEl.querySelectorAll('.sel-row').forEach(cb => {
+    cb.checked = selectedRows.has(cb.dataset.id);
+  });
+}
+
+let autoScrollRaf = null;
+const SCROLL_ZONE = 50; // 边缘触发区高度
+const SCROLL_MAX = 12;  // 最大滚动速度
+
+function autoScrollTick(e) {
+  const rect = scrollEl.getBoundingClientRect();
+  const topDist = e.clientY - rect.top;
+  const botDist = rect.bottom - e.clientY;
+  let dir = 0, speed = 0;
+  if (topDist < SCROLL_ZONE && topDist > 0) {
+    dir = -1;
+    speed = Math.round((1 - topDist / SCROLL_ZONE) * SCROLL_MAX);
+  } else if (botDist < SCROLL_ZONE && botDist > 0) {
+    dir = 1;
+    speed = Math.round((1 - botDist / SCROLL_ZONE) * SCROLL_MAX);
+  }
+  if (dir === 0) return false;
+  scrollEl.scrollTop += dir * speed;
+  // 滚动中更新框选
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = el?.closest?.('.cell');
+  if (cell) {
+    const colKey = cell.dataset.col;
+    const rowIdx = parseInt(cell.dataset.row);
+    if (colKey && !isNaN(rowIdx)) {
+      const colIdx = COLS.findIndex(c => c.k === colKey);
+      if (colIdx >= 0 && (selRange.r2 !== rowIdx || selRange.c2 !== colIdx)) {
+        selRange.r2 = rowIdx;
+        selRange.c2 = colIdx;
+        selDragMoved = true;
+        updateSelOverlay();
+        if (selCheckMode) updateCheckRange();
+      }
+    }
+  }
+  return true;
+}
 
 document.addEventListener('mousemove', e => {
   if (!selDragging) return;
   e.preventDefault();
+  if (autoScrollTick(e)) {
+    if (!autoScrollRaf) {
+      autoScrollRaf = requestAnimationFrame(function loop() {
+        if (!selDragging || !autoScrollTick(e)) { stopAutoScroll(); return; }
+        autoScrollRaf = requestAnimationFrame(loop);
+      });
+    }
+  } else {
+    stopAutoScroll();
+  }
   const el = document.elementFromPoint(e.clientX, e.clientY);
   const cell = el?.closest?.('.cell');
   if (!cell) return;
@@ -485,19 +548,29 @@ document.addEventListener('mousemove', e => {
     selRange.c2 = colIdx;
     selDragMoved = true;
     updateSelOverlay();
+    if (selCheckMode) updateCheckRange();
   }
 });
+
+function stopAutoScroll() {
+  if (autoScrollRaf) { cancelAnimationFrame(autoScrollRaf); autoScrollRaf = null; }
+}
 
 document.addEventListener('mouseup', () => {
   if (!selDragging) return;
   selDragging = false;
-  // 单击（没拖动）选中单格，不在这里清除 selRange
+  stopAutoScroll();
+  if (selCheckMode) {
+    selCheckMode = false;
+    renderHead();
+    renderRows();
+  }
 });
 
 // 点击表格外 → 清除框选
 document.addEventListener('mousedown', e => {
   if (!e.target.closest('#scroll') && !e.target.closest('#inner')) {
-    selRange = null;
+    selRange = null; selCheckMode = false;
     updateSelOverlay();
   }
 });
@@ -596,6 +669,7 @@ function cancelEdit() {
 innerEl.addEventListener('click', e => {
   // 行选择复选框
   if (e.target.classList.contains('sel-row')) {
+    if (selDragMoved) return; // 拖拽多选时不触发单点 toggle
     const id = e.target.dataset.id;
     if (e.target.checked) selectedRows.add(id);
     else selectedRows.delete(id);
