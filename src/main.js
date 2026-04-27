@@ -707,7 +707,18 @@ innerEl.addEventListener('click', e => {
   const col = cell.dataset.col;
   const row = parseInt(cell.dataset.row);
   if (!col || isNaN(row)) return;
-  if (col === '_act' || col === '_sel' || col === 'Note') return;
+  if (col === '_act' || col === 'Note') return;
+  // 点击 _sel 单元格空白处 → 切换该行勾选
+  if (col === '_sel') {
+    const r = rows[row];
+    if (r) {
+      if (selectedRows.has(r.id)) selectedRows.delete(r.id);
+      else selectedRows.add(r.id);
+      renderHead();
+      renderRows();
+    }
+    return;
+  }
 
   // 如果刚才拖拽了，不进入编辑
   if (selDragMoved) return;
