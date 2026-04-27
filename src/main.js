@@ -466,6 +466,7 @@ function refresh() {
 /* ============================ 框选事件 ============================ */
 
 innerEl.addEventListener('mousedown', e => {
+  if (e.button !== 0) return; // 只处理左键，右键留给 contextmenu
   const cell = e.target.closest('.cell');
   if (!cell) {
     selRange = null; selCheckMode = false;
