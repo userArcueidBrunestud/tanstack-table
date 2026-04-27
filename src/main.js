@@ -12,6 +12,15 @@ document.getElementById('app').innerHTML = `
   </div>
 </div>
 <div id="toast"></div>
+<div id="ctx-menu">
+  <div class="ctx-item" data-action="copy">复制</div>
+  <div class="ctx-item" data-action="noStock">无货</div>
+  <div class="ctx-item" data-action="noStockPub">无货公海</div>
+  <div class="ctx-item" data-action="batchReply">批量回复</div>
+  <div class="ctx-item" data-action="assign">分配他人</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item ctx-danger" data-action="delete">删除询价</div>
+</div>
 `
 
 /* ============================ 常量（来自 PanelTableCanvas） ============================ */
@@ -356,6 +365,10 @@ const ROW_H = 36;
 const selOverlay = document.createElement('div');
 selOverlay.id = 'sel-overlay';
 innerEl.appendChild(selOverlay);
+
+/* 右键菜单 */
+const ctxMenu = document.getElementById('ctx-menu');
+let ctxMenuRowIdx = -1;
 
 const virt = new Virtualizer({
   count: rows.length,
@@ -754,6 +767,79 @@ innerEl.addEventListener('blur', e => {
   const inp = e.target.closest('.ci');
   if (inp && editingCell) commitEdit(inp);
 }, true);
+
+/* ============================ 右键菜单 ============================ */
+
+innerEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const cell = e.target.closest('.cell');
+  if (!cell) { hideCtxMenu(); return; }
+  const rowIdx = parseInt(cell.dataset.row);
+  if (isNaN(rowIdx)) { hideCtxMenu(); return; }
+  ctxMenuRowIdx = rowIdx;
+  ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 150) + 'px';
+  ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 220) + 'px';
+  ctxMenu.classList.add('on');
+});
+
+ctxMenu.addEventListener('click', async e => {
+  const item = e.target.closest('.ctx-item');
+  if (!item) return;
+  const action = item.dataset.action;
+  hideCtxMenu();
+
+  const r = rows[ctxMenuRowIdx];
+  const checkedIds = [...selectedRows];
+  const isCurChecked = r && selectedRows.has(r.id);
+  const targetIds = r ? (isCurChecked ? checkedIds : [r.id]) : checkedIds;
+
+  switch (action) {
+    case 'copy': {
+      if (!r) break;
+      const text = COLS.filter(c => c.k !== '_idx' && c.k !== '_sel' && c.k !== '_act')
+        .map(c => `${c.l}: ${r[c.k] ?? ''}`).join('\n');
+      try { await navigator.clipboard.writeText(text); showToast('已复制'); } catch { showToast('复制失败'); }
+      break;
+    }
+    case 'noStock':
+    case 'noStockPub': {
+      if (!targetIds.length) { showToast('请先勾选记录'); break; }
+      const gongHai = action === 'noStockPub' ? '1' : '0';
+      for (const id of targetIds) {
+        const fd = new FormData();
+        fd.append('id', id);
+        fd.append('CaiGouBJDetail', id);
+        fd.append('GongHai', gongHai);
+        fd.append('BillPage', 'CaiGouBJ');
+        await post('/CaiGouBJ/NoStock', fd);
+      }
+      showToast(gongHai === '0' ? '无货提醒已发送' : '已转公海');
+      break;
+    }
+    case 'delete': {
+      if (!targetIds.length) { showToast('请先勾选记录'); break; }
+      if (!confirm(`确定要删除 ${targetIds.length} 条询价吗？`)) break;
+      const fd = new FormData();
+      fd.append('BillID', targetIds.join(','));
+      await post('/CaiGouBJ/Delete', fd);
+      showToast('删除成功');
+      targetIds.forEach(id => selectedRows.delete(id));
+      // 从数据中移除
+      ALL = ALL.filter(x => !targetIds.includes(x.id));
+      refresh();
+      break;
+    }
+    default:
+      showToast('功能开发中');
+  }
+});
+
+function hideCtxMenu() { ctxMenu.classList.remove('on'); }
+
+document.addEventListener('click', e => {
+  if (!ctxMenu.classList.contains('on')) return;
+  if (!ctxMenu.contains(e.target)) hideCtxMenu();
+});
 
 // Ctrl+S 保存
 document.addEventListener('keydown', e => {
