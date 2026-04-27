@@ -582,7 +582,7 @@ document.addEventListener('mouseup', () => {
 
 // 点击表格外 → 清除框选
 document.addEventListener('mousedown', e => {
-  if (!e.target.closest('#scroll') && !e.target.closest('#inner')) {
+  if (!e.target.closest('#scroll') && !e.target.closest('#inner') && !e.target.closest('#ctx-menu')) {
     selRange = null; selCheckMode = false;
     updateSelOverlay();
   }
@@ -775,8 +775,26 @@ innerEl.addEventListener('contextmenu', e => {
   const cell = e.target.closest('.cell');
   if (!cell) { hideCtxMenu(); return; }
   const rowIdx = parseInt(cell.dataset.row);
-  if (isNaN(rowIdx)) { hideCtxMenu(); return; }
+  const colKey = cell.dataset.col;
+  if (isNaN(rowIdx) || !colKey) { hideCtxMenu(); return; }
+  const colIdx = COLS.findIndex(c => c.k === colKey);
+  if (colIdx < 0) { hideCtxMenu(); return; }
   ctxMenuRowIdx = rowIdx;
+
+  // Excel 逻辑：右键如果在已选框选范围内 → 保持原范围；否则 → 选中当前格
+  if (selRange) {
+    const r1 = Math.min(selRange.r1, selRange.r2);
+    const r2 = Math.max(selRange.r1, selRange.r2);
+    const c1 = Math.min(selRange.c1, selRange.c2);
+    const c2 = Math.max(selRange.c1, selRange.c2);
+    if (rowIdx < r1 || rowIdx > r2 || colIdx < c1 || colIdx > c2) {
+      selRange = { r1: rowIdx, c1: colIdx, r2: rowIdx, c2: colIdx };
+    }
+  } else {
+    selRange = { r1: rowIdx, c1: colIdx, r2: rowIdx, c2: colIdx };
+  }
+  updateSelOverlay();
+
   ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 150) + 'px';
   ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 220) + 'px';
   ctxMenu.classList.add('on');
@@ -786,6 +804,38 @@ ctxMenu.addEventListener('click', async e => {
   const item = e.target.closest('.ctx-item');
   if (!item) return;
   const action = item.dataset.action;
+
+  if (action === 'copy') {
+    // 复制不关菜单，保持用户手势上下文
+    if (!selRange) return;
+    const r1 = Math.min(selRange.r1, selRange.r2);
+    const r2 = Math.max(selRange.r1, selRange.r2);
+    const c1 = Math.min(selRange.c1, selRange.c2);
+    const c2 = Math.max(selRange.c1, selRange.c2);
+    const lines = [];
+    for (let ri = r1; ri <= r2; ri++) {
+      const rr = rows[ri];
+      if (!rr) continue;
+      const parts = [];
+      for (let ci = c1; ci <= c2; ci++) {
+        parts.push(rr[COLS[ci].k] ?? '');
+      }
+      lines.push(parts.join('\t'));
+    }
+    const text = lines.join('\n');
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(ok ? '已复制' : '复制失败');
+    hideCtxMenu();
+    return;
+  }
+
   hideCtxMenu();
 
   const r = rows[ctxMenuRowIdx];
@@ -794,13 +844,6 @@ ctxMenu.addEventListener('click', async e => {
   const targetIds = r ? (isCurChecked ? checkedIds : [r.id]) : checkedIds;
 
   switch (action) {
-    case 'copy': {
-      if (!r) break;
-      const text = COLS.filter(c => c.k !== '_idx' && c.k !== '_sel' && c.k !== '_act')
-        .map(c => `${c.l}: ${r[c.k] ?? ''}`).join('\n');
-      try { await navigator.clipboard.writeText(text); showToast('已复制'); } catch { showToast('复制失败'); }
-      break;
-    }
     case 'noStock':
     case 'noStockPub': {
       if (!targetIds.length) { showToast('请先勾选记录'); break; }
