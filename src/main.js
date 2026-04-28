@@ -381,6 +381,11 @@ fillHandle.id = 'fill-handle';
 selOverlay.appendChild(fillHandle);
 innerEl.appendChild(selOverlay);
 
+/* 统计框 */
+const statsBox = document.createElement('div');
+statsBox.id = 'stats-box';
+document.body.appendChild(statsBox);
+
 /* 右键菜单 */
 const ctxMenu = document.getElementById('ctx-menu');
 let ctxMenuRowIdx = -1;
@@ -452,6 +457,7 @@ function colLeft(colIdx) {
 function updateSelOverlay() {
   if (!selRange) {
     selOverlay.style.display = 'none';
+    statsBox.style.display = 'none';
     return;
   }
   const r1 = Math.min(selRange.r1, selRange.r2);
@@ -464,6 +470,26 @@ function updateSelOverlay() {
   selOverlay.style.left = colLeft(c1) + 'px';
   selOverlay.style.width = (colLeft(c2 + 1) - colLeft(c1)) + 'px';
   selOverlay.style.height = ((r2 - r1 + 1) * ROW_H) + 'px';
+
+  // 统计数字列
+  let count = 0, sum = 0;
+  for (let ri = r1; ri <= r2; ri++) {
+    const rr = rows[ri];
+    if (!rr) continue;
+    for (let ci = c1; ci <= c2; ci++) {
+      const v = parseFloat(rr[COLS[ci].k]);
+      if (!isNaN(v)) { count++; sum += v; }
+    }
+  }
+  if (count > 0) {
+    const rect = scrollEl.getBoundingClientRect();
+    statsBox.innerHTML = `合计 ${sum.toFixed(2)}`;
+    statsBox.style.display = 'block';
+    statsBox.style.left = Math.min(rect.right - 200, rect.left + colLeft(c2 + 1) + 8) + 'px';
+    statsBox.style.top = Math.min(rect.bottom - 26, rect.top + (r2 + 1) * ROW_H - scrollEl.scrollTop + 4) + 'px';
+  } else {
+    statsBox.style.display = 'none';
+  }
 }
 
 function refresh() {
