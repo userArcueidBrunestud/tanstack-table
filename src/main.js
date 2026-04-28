@@ -252,6 +252,8 @@ let selRange = null; // { r1, c1, r2, c2 } — 框选范围（col 是 COLS 索�
 let selDragging = false;
 let selDragMoved = false;
 let selCheckMode = false; // 从复选框列拖拽 → 多选
+let fillDragging = false;  // 填充柄拖拽中
+let fillOrigRange = null;  // 填充前原始选区
 const selectedRows = new Set(); // row id
 
 /* ============================ 过滤 & 排序 ============================ */
@@ -374,6 +376,9 @@ const ROW_H = 36;
 /* 框选覆盖层 */
 const selOverlay = document.createElement('div');
 selOverlay.id = 'sel-overlay';
+const fillHandle = document.createElement('div');
+fillHandle.id = 'fill-handle';
+selOverlay.appendChild(fillHandle);
 innerEl.appendChild(selOverlay);
 
 /* 右键菜单 */
@@ -486,6 +491,16 @@ function refreshRows() {
 
 innerEl.addEventListener('mousedown', e => {
   if (e.button !== 0) return; // 只处理左键，右键留给 contextmenu
+
+  // 点击填充柄
+  if (e.target.id === 'fill-handle') {
+    e.preventDefault();
+    e.stopPropagation();
+    fillDragging = true;
+    fillOrigRange = { ...selRange };
+    return;
+  }
+
   const cell = e.target.closest('.cell');
   if (!cell) {
     selRange = null; selCheckMode = false;
@@ -556,6 +571,20 @@ function autoScrollTick(e) {
 }
 
 document.addEventListener('mousemove', e => {
+  // 填充柄拖拽：向下扩展选区
+  if (fillDragging) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el?.closest?.('.cell');
+    if (cell) {
+      const rowIdx = parseInt(cell.dataset.row);
+      if (!isNaN(rowIdx) && rowIdx >= fillOrigRange.r2) {
+        selRange = { ...fillOrigRange, r2: rowIdx };
+        updateSelOverlay();
+      }
+    }
+    return;
+  }
+
   if (!selDragging) return;
   e.preventDefault();
   if (autoScrollTick(e)) {
@@ -590,6 +619,37 @@ function stopAutoScroll() {
 }
 
 document.addEventListener('mouseup', () => {
+  // 填充柄松开：复制值到扩展区域
+  if (fillDragging) {
+    fillDragging = false;
+    if (fillOrigRange && selRange.r2 > fillOrigRange.r2) {
+      const fr1 = Math.min(fillOrigRange.r1, fillOrigRange.r2);
+      const fr2 = Math.max(fillOrigRange.r1, fillOrigRange.r2);
+      const fc1 = Math.min(fillOrigRange.c1, fillOrigRange.c2);
+      const fc2 = Math.max(fillOrigRange.c1, fillOrigRange.c2);
+      const srcRows = fr2 - fr1 + 1;
+      for (let ri = fr2 + 1; ri <= selRange.r2; ri++) {
+        const srcRow = rows[fr2]; // Excel 逻辑：始终用最后一行向下复制
+        const dstRow = rows[ri];
+        if (!srcRow || !dstRow) continue;
+        for (let ci = fc1; ci <= fc2; ci++) {
+          const col = COLS[ci];
+          const k = col.k;
+          if (k === '_idx' || k === '_sel' || k === '_act' || k === 'Note') continue;
+          dstRow[k] = srcRow[k];
+          // 同步更新 ALL
+          const rAll = ALL.find(x => x.id === dstRow.id);
+          if (rAll) rAll[k] = srcRow[k];
+        }
+        dstRow.edit = true;
+        editedRows.set(dstRow.id, { ...editedRows.get(dstRow.id) });
+      }
+      refresh();
+    }
+    fillOrigRange = null;
+    return;
+  }
+
   if (!selDragging) return;
   selDragging = false;
   stopAutoScroll();
@@ -907,8 +967,22 @@ ctxMenu.addEventListener('click', async e => {
 
   const r = rows[ctxMenuRowIdx];
   const checkedIds = [...selectedRows];
+
+  // 获取框选范围内的行
+  let selIds = [];
+  if (selRange) {
+    const r1 = Math.min(selRange.r1, selRange.r2);
+    const r2 = Math.max(selRange.r1, selRange.r2);
+    for (let i = r1; i <= r2; i++) {
+      const rr = rows[i];
+      if (rr) selIds.push(rr.id);
+    }
+  }
+
+  const isInSel = r && selIds.includes(r.id);
   const isCurChecked = r && selectedRows.has(r.id);
-  const targetIds = r ? (isCurChecked ? checkedIds : [r.id]) : checkedIds;
+  // 优先级：框选区域 > 勾选 > 单行
+  const targetIds = isInSel ? selIds : r ? (isCurChecked ? checkedIds : [r.id]) : checkedIds;
 
   switch (action) {
     case 'noStock':

@@ -48,6 +48,9 @@ input::placeholder{color:var(--dim)}
 /* cell styles */
 #sel-overlay{position:absolute;pointer-events:none;z-index:1;
   border:2px solid var(--bl);background:rgba(74,144,217,.07);box-sizing:border-box;display:none}
+#fill-handle{position:absolute;right:-4px;bottom:-4px;width:8px;height:8px;
+  background:var(--bl);border:1px solid #fff;pointer-events:auto;cursor:crosshair;display:none}
+#sel-overlay[style*="block"] #fill-handle{display:block}
 .dim{color:var(--dim);font-size:11px}
 .pn{color:var(--tx);cursor:pointer;font-size:14px}.pn-dim{opacity:.5}
 .iv-badge{padding:2px 10px;border-radius:3px;font-size:12px;white-space:nowrap}
